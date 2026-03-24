@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Heer Kiryana Ledger</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    button { padding: 8px; margin: 5px; }
+    .red { background: red; color: white; }
+    .green { background: green; color: white; }
+    .box { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+  </style>
+</head>
+
+<body>
+
+<h2>Heer Kiryana Ledger System</h2>
+
+<h3>Total Udhaar: Rs <span id="total"></span></h3>
+
+<div class="box">
+<h3>Add Customer</h3>
+<input id="name" placeholder="Name">
+<input id="mobile" placeholder="Mobile">
+<input id="address" placeholder="Address">
+<button onclick="addCustomer()">Add Customer</button>
+</div>
+
+<div class="box">
+<h3>Transaction</h3>
+<select id="customer"></select><br><br>
+<input id="amount" placeholder="Amount"><br><br>
+<input id="details" placeholder="Details"><br><br>
+<input type="date" id="date"><br><br>
+
+<button class="red" onclick="giveUdhaar()">Give Udhaar</button>
+<button class="green" onclick="takePayment()">Take Payment</button>
+</div>
+
+<div class="box">
+<h3>Customers</h3>
+<ul id="list"></ul>
+</div>
+
+<script>
+
+let customers = JSON.parse(localStorage.getItem("customers")) || [];
+
+function save() {
+  localStorage.setItem("customers", JSON.stringify(customers));
+  load();
+}
+
+function addCustomer() {
+  let c = {
+    id: Date.now(),
+    name: name.value,
+    mobile: mobile.value,
+    address: address.value,
+    transactions: []
+  };
+  customers.push(c);
+  save();
+}
+
+function giveUdhaar() {
+  let c = customers.find(x => x.id == customer.value);
+  c.transactions.push({
+    type: "udhaar",
+    amount: +amount.value,
+    details: details.value,
+    date: date.value
+  });
+  save();
+}
+
+function takePayment() {
+  let c = customers.find(x => x.id == customer.value);
+  c.transactions.push({
+    type: "payment",
+    amount: +amount.value,
+    details: "Payment Received",
+    date: date.value
+  });
+  save();
+}
+
+function load() {
+  list.innerHTML = "";
+  customer.innerHTML = "";
+  let total = 0;
+
+  customers.forEach(c => {
+    let balance = 0;
+
+    c.transactions.forEach(t => {
+      if (t.type == "udhaar") balance += t.amount;
+      else balance -= t.amount;
+    });
+
+    total += balance;
+
+    let li = document.createElement("li");
+    li.innerHTML = `
+      ${c.name} - Rs ${balance}
+      <button onclick="view(${c.id})">View</button>
+      <button onclick="pdf(${c.id})">PDF</button>
+    `;
+    list.appendChild(li);
+
+    let opt = document.createElement("option");
+    opt.value = c.id;
+    opt.text = c.name;
+    customer.appendChild(opt);
+  });
+
+  document.getElementById("total").innerText = total;
+}
+
+function view(id) {
+  let c = customers.find(x => x.id == id);
+  let txt = c.name + "\n";
+
+  c.transactions.forEach(t => {
+    txt += `${t.date} - ${t.details} - ${t.amount}\n`;
+  });
+
+  alert(txt);
+}
+
+function pdf(id) {
+  const { jsPDF } = window.jspdf;
+  let doc = new jsPDF();
+
+  let c = customers.find(x => x.id == id);
+  let y = 10;
+
+  doc.text(c.name, 10, y);
+  y += 10;
+
+  c.transactions.forEach(t => {
+    doc.text(`${t.date} | ${t.details} | ${t.amount}`, 10, y);
+    y += 10;
+  });
+
+  doc.save(c.name + ".pdf");
+}
+
+load();
+
+</script>
+
+</body>
+</html>
